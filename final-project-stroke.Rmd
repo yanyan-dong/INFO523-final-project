@@ -59,6 +59,13 @@ library(corrplot)
 library(corrgram)
 
 # model
+library(caTools)
+library(e1071)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(ROSE)
 ```
 
 ```{r}
@@ -137,7 +144,8 @@ ggplot(data, aes(avg_glucose_level,y=..density..)) +
 boxplot(data$avg_glucose_level)
 summary(data$avg_glucose_level)
 
-# binning avg glucose level based on the information on website: https://my.clevelandclinic.org/health/diagnostics/12363-blood-glucose-test#:~:text=What%20is%20a%20normal%20glucose,can%20be%20%E2%80%9Cnormal%E2%80%9D%20too.
+# binning avg glucose level based on the information on website:
+# https://my.clevelandclinic.org/health/diagnostics/12363-blood-glucose-test#:~:text=What%20is%20a%20normal%20glucose,can%20be%20%E2%80%9Cnormal%E2%80%9D%20too.
 group_glucose <- function(level){
   res <- level
   for (i in 1:length(level)){
@@ -173,7 +181,8 @@ ggplot(data, aes(bmi)) +
 boxplot(data$bmi)
 summary(data$bmi)
 
-# binning BMI based on the information on the CDC website: https://www.cdc.gov/healthyweight/assessing/index.html#:~:text=If%20your%20BMI%20is%20less,falls%20within%20the%20obese%20range.
+# binning BMI based on the information on the CDC website:
+# https://www.cdc.gov/healthyweight/assessing/index.html#:~:text=If%20your%20BMI%20is%20less,falls%20within%20the%20obese%20range.
 group_bmi <- function(bmi){
   res <- bmi
   for (i in 1:length(bmi)){
@@ -208,28 +217,24 @@ str(data)
 #### <span id="4">4. Exploratory Data Analysis</span>
 
 ```{r}
-# convert factor variables to numeric variables
+# check the correlation
+## convert factor variables to numeric variables
 data_num <- data %>% mutate(across(where(is.factor),as.numeric))
 str(data_num)
 
 # correlation and corrplot
 (cor <- cor(data_num))
 
-# corrplot
+## corrplot
 corrplot(cor, method = "color")
 
-# corrgram
-corrgram(data_num, order=TRUE, 
-         lower.panel=panel.shade,
-         upper.panel=panel.pie,
-         text.panel=panel.txt)
+## corrgram
+corrgram(data_num, order = TRUE, 
+         lower.panel = panel.shade,
+         upper.panel = panel.pie,
+         text.panel = panel.txt)
 
 # age & stroke
-# ggplot(data, aes(stroke)) + 
-#   geom_bar(fill="blue",
-#            alpha=0.5) +
-#   facet_grid(cols = vars(age))
-
 ggplot(data, aes(age, fill=stroke)) + 
   geom_bar(position = "dodge",
            alpha=0.7)
@@ -323,7 +328,7 @@ ggplot(data, aes(smoking_status, fill=stroke)) +
   geom_bar(position = "fill",
            alpha=0.7)
 
-# stroke, age, avg_glucose_level, bmi
+# stroke, avg_glucose_level, bmi
 ggplot(data, aes(avg_glucose_level, bmi)) +
   geom_jitter() +
   facet_wrap(vars(stroke))
@@ -338,7 +343,75 @@ ggplot(data, aes(avg_glucose_level, fill = heart_disease)) +
 #### <span id="5">5. Model 1: Support Vector Machine</span>
 
 ```{r}
+# drop uncorrelated attributes: gender, Residence_type
+data_drop <- select(data, -gender, -Residence_type)
 
+# Random Over-Sampling
+## move class label to 1st row on dataset
+data_md <- data_drop[c(9:1)]
+
+## over sampling data
+data_os <- ovun.sample(stroke~., data=data_md, method = "over", p = 0.5, seed = 1)
+
+## check the data after over sampling
+str(data_os)
+summary(data_os)
+table(data_os$data$stroke)
+
+## move class label (stroke) back to last row
+data_os <- data_os$data[c(9:1)]
+
+# Train and Test Split
+set.seed(101)
+
+split <- sample.split(data_os$stroke, SplitRatio = 0.7)
+train <- subset(data_os, split == TRUE)
+test <- subset(data_os, split == FALSE)
+```
+
+```{r}
+# SVM
+model_svm <- svm(stroke ~ ., data = train)
+
+# check the model
+summary(model_svm)
+
+# use the model on test data to predict our label (stroke)
+pred_svm <- predict(model_svm, test[1:8])
+
+# check the model performance
+confusionMatrix(pred_svm, 
+                factor(test$stroke), 
+                mode = "everything", 
+                positive = "1")
+```
+
+```{r}
+# Parameter tuning
+## It took a long time, so I comment here
+## sampling method: 10-fold cross validation
+
+# tune.results <- tune(svm, train.x= stroke ~ .,
+#                      data = train,
+#                      kernel='radial',
+#                      ranges=list(cost=c(1,10), 
+#                                  gamma=c(0.1,1)))
+# tune.results
+
+# set cost = 10, gamma = 1
+model_svm <- svm(stroke ~ .,
+                 data = train,
+                 cost = 10,
+                 gamma = 1,
+                 kernel = 'radial')
+
+## apply the tuned SVM model on test data to predict class label (stroke)
+pred_svm <- predict(model_svm,test[1:8])
+
+confusionMatrix(pred_svm, 
+                factor(test$stroke), 
+                mode = "everything", 
+                positive = "1")
 ```
 
 ----------------
