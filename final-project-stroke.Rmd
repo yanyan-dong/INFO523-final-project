@@ -1,0 +1,367 @@
+---
+title: "INFO 523 Final Project"
+author: "Sione Lister and Yanyan Dong"
+date: "2022-11-16"
+group: 4
+output: html_document
+---
+- [1. Introduction](#1)
+- [2. Preparation](#2)
+- [3. Data Cleaning](#3)
+- [4. Exploratory Data Analysis](#4)
+- [5. Model 1: Support Vector Machine](#5)
+- [6. Model 2: Random Forest](#6)
+- [7. Model Evaluation](#7)
+- [8. Conclusion](#8)
+
+-------------------
+
+#### <span id="1">1. Introduction</span>
+dataset: https://www.kaggle.com/datasets/fedesoriano/stroke-prediction-dataset
+
+Attribute Information
+
+1) id: unique identifier
+
+2) gender: "Male", "Female" or "Other"
+
+3) age: age of the patient
+
+4) hypertension: 0 if the patient doesn't have hypertension, 1 if the patient has hypertension
+
+5) heart_disease: 0 if the patient doesn't have any heart diseases, 1 if the patient has a heart disease
+
+6) ever_married: "No" or "Yes"
+
+7) work_type: "children", "Govt_jov", "Never_worked", "Private" or "Self-employed"
+
+8) Residence_type: "Rural" or "Urban"
+
+9) avg_glucose_level: average glucose level in blood
+
+10) bmi: body mass index
+
+11) smoking_status: "formerly smoked", "never smoked", "smokes" or "Unknown"*
+
+12) stroke: 1 if the patient had a stroke or 0 if not
+
+-------------------
+
+
+#### <span id="2">2. Preparation</span>
+
+```{r package, message=FALSE, warning=FALSE}
+# data
+library(dplyr)
+library(ggplot2)
+library(Amelia)
+library(corrplot)
+library(corrgram)
+
+# model
+```
+
+```{r}
+# read the data
+data <- read.csv("healthcare-dataset-stroke-data.csv")
+
+# view the data
+head(data)
+str(data)
+summary(data)
+```
+
+-------------------
+
+#### <span id="3">3. Data Cleaning</span>
+
+```{r}
+# check NA values
+any(is.na(data)) # it shows there are no missing value
+
+# however there are N/A in bmi, convert them to NA values
+data[data == 'N/A'] <- NA
+missmap(data, col=c("yellow", "black"), legend=FALSE) # there are missing values on bmi
+table(is.na(data)) # there are 201 missing values
+
+# convert bmi data type to numeric
+data$bmi <- as.numeric(data$bmi)
+# plot bmi
+hist(data$bmi)
+boxplot(data$bmi)
+
+# drop NA values
+data <- na.omit(data)
+any(is.na(data)) # check again, there is no NA value now
+
+# drop the id column
+data <- data[-1]
+head(data)
+```
+
+```{r}
+# data transformation
+# convert character data type to factor
+str(data)
+data <- data %>% mutate(across(where(is.character),factor))
+
+# convert hypertension, heart_disease, stroke data type from integer to factor
+data$hypertension <- as.factor(data$hypertension)
+data$heart_disease <- as.factor(data$heart_disease)
+data$stroke <- as.factor(data$stroke)
+
+# binning numeric valuables
+# age
+ggplot(data, aes(age,y=..density..)) + 
+  geom_histogram(binwidth=1,
+                 color="black",
+                 fill="#02bcfa",
+                 alpha=0.5) + 
+  geom_density() + labs(title="Age Distribution")
+
+boxplot(data$age)
+summary(data$age)
+
+# binning age with quantile: 25, 44, 60, 82
+data$age <- cut(data$age,
+                breaks = c(0, 25, 44, 60, 82), 
+                labels=c('young', 'grown', 'mature', 'old'))
+
+# avg glucose level
+ggplot(data, aes(avg_glucose_level,y=..density..)) + 
+  geom_histogram(color="black",
+                 fill="#02bcfa",
+                 alpha=0.5) + 
+  geom_density() + labs(title="Average Glucose Level Distribution")
+
+boxplot(data$avg_glucose_level)
+summary(data$avg_glucose_level)
+
+# binning avg glucose level based on the information on website: https://my.clevelandclinic.org/health/diagnostics/12363-blood-glucose-test#:~:text=What%20is%20a%20normal%20glucose,can%20be%20%E2%80%9Cnormal%E2%80%9D%20too.
+group_glucose <- function(level){
+  res <- level
+  for (i in 1:length(level)){
+    if (level[i] <= 70){
+      res[i] <- "low"
+    } else if (level[i] > 70 & level[i] <= 99) {
+      res[i] <- "normal"
+    } else if (level[i] > 100 & level[i] <= 125) {
+      res[i] <- "prediabetes"
+    } else {
+      res[i] <- "diabetes"
+    }
+  }
+  return(res)
+}
+
+# apply group_glucose function
+data$avg_glucose_level <- group_glucose(data$avg_glucose_level)
+
+# convert avg_glucose_level data type to factor
+data$avg_glucose_level <- as.factor(data$avg_glucose_level)
+
+# reorder the levels of data$avg_glucose_level
+data$avg_glucose_level <- factor(data$avg_glucose_level, levels = c("low", "normal", "prediabetes", "diabetes"))
+
+# bmi
+ggplot(data, aes(bmi)) + 
+  geom_histogram(color="black",
+                 fill="#02bcfa",
+                 alpha=0.5) + 
+  geom_density() + labs(title="BMI Distribution")
+
+boxplot(data$bmi)
+summary(data$bmi)
+
+# binning BMI based on the information on the CDC website: https://www.cdc.gov/healthyweight/assessing/index.html#:~:text=If%20your%20BMI%20is%20less,falls%20within%20the%20obese%20range.
+group_bmi <- function(bmi){
+  res <- bmi
+  for (i in 1:length(bmi)){
+    if (bmi[i] < 18.5){
+      res[i] <- "underweight"
+    } else if (bmi[i] >= 18.5 & bmi[i] <= 24.9) {
+      res[i] <- "normal"
+    } else if (bmi[i] >= 25.0 & bmi[i] <= 29.9) {
+      res[i] <- "overweight"
+    } else {
+      res[i] <- "obese"
+    }
+  }
+  return(res)
+}
+
+# apply group_bmi function
+data$bmi <- group_bmi(data$bmi)
+
+# convert bmi data type to factor
+data$bmi <- as.factor(data$bmi)
+
+# reorder the levels of bmi
+data$bmi <- factor(data$bmi, levels = c("underweight", "normal", "overweight", "obese"))
+
+# check the structure
+str(data)
+```
+
+----------------
+
+#### <span id="4">4. Exploratory Data Analysis</span>
+
+```{r}
+# convert factor variables to numeric variables
+data_num <- data %>% mutate(across(where(is.factor),as.numeric))
+str(data_num)
+
+# correlation and corrplot
+(cor <- cor(data_num))
+
+# corrplot
+corrplot(cor, method = "color")
+
+# corrgram
+corrgram(data_num, order=TRUE, 
+         lower.panel=panel.shade,
+         upper.panel=panel.pie,
+         text.panel=panel.txt)
+
+# age & stroke
+# ggplot(data, aes(stroke)) + 
+#   geom_bar(fill="blue",
+#            alpha=0.5) +
+#   facet_grid(cols = vars(age))
+
+ggplot(data, aes(age, fill=stroke)) + 
+  geom_bar(position = "dodge",
+           alpha=0.7)
+
+ggplot(filter(data, stroke == "1"), aes(age)) + 
+  geom_bar(fill="blue", 
+           alpha=0.6)
+
+# gender & stroke
+ggplot(filter(data, stroke == "1"), aes(gender)) + 
+  geom_bar(fill="blue", 
+           alpha=0.6)
+
+ggplot(data, aes(gender, fill=stroke)) + 
+  geom_bar(alpha=0.7)
+
+## normalize the height
+ggplot(data, aes(gender, fill=stroke)) + 
+  geom_bar(position = "fill",
+           alpha=0.7)
+
+# hypertension & stroke
+ggplot(filter(data, hypertension == "1"), aes(stroke)) + 
+  geom_bar(fill="blue", 
+           alpha=0.6)
+
+ggplot(data, aes(hypertension, fill=stroke)) + 
+  geom_bar(position = "fill",
+           alpha=0.7)
+
+# heart_disease & stroke
+ggplot(filter(data, heart_disease == "1"), aes(stroke)) + 
+  geom_bar(fill="blue", 
+           alpha=0.6)
+
+ggplot(data, aes(heart_disease, fill=stroke)) + 
+  geom_bar(position = "fill",
+           alpha=0.7)
+
+# ever_married & stroke
+ggplot(filter(data, stroke == "1"), aes(ever_married)) + 
+  geom_bar(fill="blue", 
+           alpha=0.6)
+
+ggplot(data, aes(ever_married, fill=stroke)) + 
+  geom_bar(position = "fill",
+           alpha=0.7)
+
+# work_type & stroke
+ggplot(filter(data, stroke == "1"), aes(work_type)) + 
+  geom_bar(fill="blue", 
+           alpha=0.6)
+
+ggplot(data, aes(work_type, fill=stroke)) + 
+  geom_bar(position = "fill",
+           alpha=0.7)
+
+# Residence_type & stroke
+ggplot(filter(data, stroke == "1"), aes(Residence_type)) + 
+  geom_bar(fill="blue", 
+           alpha=0.6)
+
+ggplot(data, aes(Residence_type, fill=stroke)) + 
+  geom_bar(position = "fill",
+           alpha=0.7)
+
+# avg_glucose_level & stroke
+ggplot(filter(data, stroke == "1"), aes(avg_glucose_level)) + 
+  geom_bar(fill="blue", 
+           alpha=0.6)
+
+ggplot(data, aes(avg_glucose_level, fill=stroke)) + 
+  geom_bar(position = "fill",
+           alpha=0.7)
+
+# bmi & stroke
+ggplot(filter(data, stroke == "1"), aes(bmi)) + 
+  geom_bar(fill="blue", 
+           alpha=0.6)
+
+ggplot(data, aes(bmi, fill=stroke)) + 
+  geom_bar(position = "fill",
+           alpha=0.7)
+
+# smoking_status & stroke
+ggplot(filter(data, stroke == "1"), aes(smoking_status)) + 
+  geom_bar(fill="blue", 
+           alpha=0.6)
+
+ggplot(data, aes(smoking_status, fill=stroke)) + 
+  geom_bar(position = "fill",
+           alpha=0.7)
+
+# stroke, age, avg_glucose_level, bmi
+ggplot(data, aes(avg_glucose_level, bmi)) +
+  geom_jitter() +
+  facet_wrap(vars(stroke))
+
+# heart_disease, avg_glucose_level, bmi
+ggplot(data, aes(avg_glucose_level, fill = heart_disease)) +
+  geom_bar(position = "fill")
+```
+
+----------------
+
+#### <span id="5">5. Model 1: Support Vector Machine</span>
+
+```{r}
+
+```
+
+----------------
+
+#### <span id="6">6. Model 2: Random Forest</span>
+
+```{r}
+
+```
+
+----------------
+
+#### <span id="7">7. Model Evaluation</span>
+
+```{r}
+
+```
+
+----------------
+
+#### <span id="8">8. Conclusion</span>
+
+```{r}
+
+```
+
