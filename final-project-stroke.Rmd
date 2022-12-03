@@ -1,25 +1,34 @@
 ---
 title: "INFO 523 Final Project"
-author: "Sione Lister and Yanyan Dong"
+author: "Group 4: Sione Lister and Yanyan Dong"
 date: "2022-11-16"
-group: 4
 output: html_document
 ---
+
 - [1. Introduction](#1)
 - [2. Preparation](#2)
 - [3. Data Cleaning](#3)
 - [4. Exploratory Data Analysis](#4)
 - [5. Model 1: Support Vector Machine](#5)
-- [6. Model 2: Random Forest](#6)
-- [7. Model Evaluation](#7)
-- [8. Conclusion](#8)
+- [6. Model 2: K-nearest Neighbors](#6)
+- [7. Model 3: Logistic Regression](#7)
+- [8. Model Evaluation](#8)
+- [9. Conclusion](#9)
 
 -------------------
 
-#### <span id="1">1. Introduction</span>
-dataset: https://www.kaggle.com/datasets/fedesoriano/stroke-prediction-dataset
+### <span id="1">1. Introduction</span>
 
-Attribute Information
+#### Problem Description and Objectives
+According to the World Health Organization, stroke is the second leading cause of death globally and, according to the Heart Disease and Stroke Statistics 2019 report, stroke is the fifth leading cause of death in the United States. Additionally, the most recent HDSS report shows that someone has a stroke in the United States every 40 seconds and someone dies from a stroke every 3.5 minutes. Due to the prevalence and seriousness of the heart disease condition, being able to predict one’s likelihood of suffering from a stroke prior could be helpful in assessing risk and evaluating treatment plans accordingly. 
+
+Using the “healthcare-dataset-stroke-data” from Kaggle, we are curious to see which variables are associated with, first, a patient having a stroke and then second, if we can find a model to predict whether a patient will or will not have a stroke. While previous research shows that age, heart disease, average glucose level and hypertension are most important factors for stroke prediction, the dataset we are using contains all of these and also many other variables that may reveal interesting patterns. 
+
+#### Dataset and Data Mining Task
+
+The data we are using for this project is from Kaggle and contains 5,100 observations with twelve attributes: id, gender, age, if hypertension is present or not, if heart disease is present or not, if they have ever been married, what type of work they do, where they reside (rural or urban), their average glucose level, BMI, their smoking status and whether or not they had a stroke. Each row of data corresponds to one patient:
+
+#### Attribute Information
 
 1) id: unique identifier
 
@@ -45,10 +54,12 @@ Attribute Information
 
 12) stroke: 1 if the patient had a stroke or 0 if not
 
+#### Link of dataset:
+https://www.kaggle.com/datasets/fedesoriano/stroke-prediction-dataset
+
 -------------------
 
-
-#### <span id="2">2. Preparation</span>
+### <span id="2">2. Preparation</span>
 
 ```{r package, message=FALSE, warning=FALSE}
 # data
@@ -62,10 +73,11 @@ library(corrgram)
 library(caTools)
 library(e1071)
 library(caret)
-library(rpart)
-library(rpart.plot)
-library(randomForest)
 library(ROSE)
+library(Metrics)
+library(class)
+library(tidymodels)
+library(glmnet)
 ```
 
 ```{r}
@@ -80,7 +92,7 @@ summary(data)
 
 -------------------
 
-#### <span id="3">3. Data Cleaning</span>
+### <span id="3">3. Data Cleaning</span>
 
 ```{r}
 # check NA values
@@ -93,6 +105,7 @@ table(is.na(data)) # there are 201 missing values
 
 # convert bmi data type to numeric
 data$bmi <- as.numeric(data$bmi)
+
 # plot bmi
 hist(data$bmi)
 boxplot(data$bmi)
@@ -108,8 +121,9 @@ head(data)
 
 ```{r}
 # data transformation
-# convert character data type to factor
 str(data)
+
+# convert character data type to factor
 data <- data %>% mutate(across(where(is.character),factor))
 
 # convert hypertension, heart_disease, stroke data type from integer to factor
@@ -135,11 +149,12 @@ data$age <- cut(data$age,
                 labels=c('young', 'grown', 'mature', 'old'))
 
 # avg glucose level
-ggplot(data, aes(avg_glucose_level,y=..density..)) + 
+ggplot(data, aes(avg_glucose_level, y=..density..)) + 
   geom_histogram(color="black",
                  fill="#02bcfa",
                  alpha=0.5) + 
-  geom_density() + labs(title="Average Glucose Level Distribution")
+  geom_density() + 
+  labs(title="Average Glucose Level Distribution")
 
 boxplot(data$avg_glucose_level)
 summary(data$avg_glucose_level)
@@ -168,15 +183,22 @@ data$avg_glucose_level <- group_glucose(data$avg_glucose_level)
 # convert avg_glucose_level data type to factor
 data$avg_glucose_level <- as.factor(data$avg_glucose_level)
 
+# levels of data$avg_glucose_level are in the wrong order
+levels(data$avg_glucose_level)
+
 # reorder the levels of data$avg_glucose_level
 data$avg_glucose_level <- factor(data$avg_glucose_level, levels = c("low", "normal", "prediabetes", "diabetes"))
+
+# check again
+levels(data$avg_glucose_level)
 
 # bmi
 ggplot(data, aes(bmi)) + 
   geom_histogram(color="black",
                  fill="#02bcfa",
                  alpha=0.5) + 
-  geom_density() + labs(title="BMI Distribution")
+  geom_density() + 
+  labs(title="BMI Distribution")
 
 boxplot(data$bmi)
 summary(data$bmi)
@@ -205,6 +227,9 @@ data$bmi <- group_bmi(data$bmi)
 # convert bmi data type to factor
 data$bmi <- as.factor(data$bmi)
 
+# levels of data$bmi are in the wrong order
+levels(data$bmi)
+
 # reorder the levels of bmi
 data$bmi <- factor(data$bmi, levels = c("underweight", "normal", "overweight", "obese"))
 
@@ -214,21 +239,21 @@ str(data)
 
 ----------------
 
-#### <span id="4">4. Exploratory Data Analysis</span>
+### <span id="4">4. Exploratory Data Analysis</span>
 
 ```{r}
 # check the correlation
-## convert factor variables to numeric variables
+# convert factor variables to numeric variables
 data_num <- data %>% mutate(across(where(is.factor),as.numeric))
 str(data_num)
 
 # correlation and corrplot
 (cor <- cor(data_num))
 
-## corrplot
+# corrplot
 corrplot(cor, method = "color")
 
-## corrgram
+# corrgram
 corrgram(data_num, order = TRUE, 
          lower.panel = panel.shade,
          upper.panel = panel.pie,
@@ -340,25 +365,25 @@ ggplot(data, aes(avg_glucose_level, fill = heart_disease)) +
 
 ----------------
 
-#### <span id="5">5. Model 1: Support Vector Machine</span>
+### <span id="5">5. Model 1: Support Vector Machine</span>
 
 ```{r}
 # drop uncorrelated attributes: gender, Residence_type
 data_drop <- select(data, -gender, -Residence_type)
 
 # Random Over-Sampling
-## move class label to 1st row on dataset
+# move class label to 1st row on dataset
 data_md <- data_drop[c(9:1)]
 
-## over sampling data
+# over sampling data
 data_os <- ovun.sample(stroke~., data=data_md, method = "over", p = 0.5, seed = 1)
 
-## check the data after over sampling
+# check the data after over sampling
 str(data_os)
 summary(data_os)
 table(data_os$data$stroke)
 
-## move class label (stroke) back to last row
+# move class label (stroke) back to last row
 data_os <- data_os$data[c(9:1)]
 
 # Train and Test Split
@@ -388,53 +413,151 @@ confusionMatrix(pred_svm,
 
 ```{r}
 # Parameter tuning
-## It took a long time, so I comment here
-## sampling method: 10-fold cross validation
+# sampling method: 10-fold cross validation
+# It takes a long time, so I comment here
 
-# tune.results <- tune(svm, train.x= stroke ~ .,
+# tune.results <- tune(svm, train.x = stroke ~ .,
 #                      data = train,
-#                      kernel='radial',
-#                      ranges=list(cost=c(1,10), 
-#                                  gamma=c(0.1,1)))
+#                      kernel = 'radial',
+#                      ranges = list(cost = c(1,10), 
+#                                    gamma = c(0.1,1)))
 # tune.results
 
 # set cost = 10, gamma = 1
-model_svm <- svm(stroke ~ .,
-                 data = train,
+model_svm <- svm(stroke ~ ., data = train,
+                 kernel = 'radial',
                  cost = 10,
-                 gamma = 1,
-                 kernel = 'radial')
+                 gamma = 1)
 
-## apply the tuned SVM model on test data to predict class label (stroke)
+# apply the tuned SVM model on test data to predict class label (stroke)
 pred_svm <- predict(model_svm,test[1:8])
+```
 
+----------------
+
+### <span id="6">6. Model 2: K-nearest Neighbors</span>
+
+```{r}
+# KNN
+# convert data type from factor to numeric
+data_os_num <- data_os %>% mutate(across(where(is.factor),as.numeric))
+data_os_num$stroke <- factor(data_os_num$stroke)
+str(data_os_num)
+
+# standardize the dataset except class label (stroke)
+data_std <- scale(data_os_num[1:8])
+head(data_std)
+
+# check variance
+var(data_std[,8])
+
+# add label column (stroke) back
+data_knn <- cbind(data_std, data_os_num[9])
+head(data_knn)
+
+# train and test split for KNN model
+set.seed(101)
+split_knn <- sample.split(data_knn$stroke, SplitRatio = 0.7)
+train_knn <- subset(data_knn, split_knn == TRUE)
+test_knn <- subset(data_knn, split_knn == FALSE)
+
+# build KNN model
+pred_knn <- knn(train_knn[1:8],
+                test_knn[1:8],
+                train_knn$stroke,
+                k = 1)
+
+# check the error rate
+er_knn <- mean(test_knn$stroke != pred_knn)
+er_knn
+```
+
+```{r}
+# Parameter tuning
+for (i in 1:10){
+  set.seed(101)
+  pred_knn <- knn(train_knn[1:8],
+                  test_knn[1:8],
+                  train_knn$stroke,
+                  k=i)
+  er_knn[i] <- mean(test_knn$stroke != pred_knn)
+}
+
+# elbow method
+k <- 1:10
+(df <- data.frame(er_knn, k))
+
+ggplot(df,aes(k, er_knn)) + 
+  geom_point() + 
+  geom_line(lty="dotted",
+            color="blue")
+
+# set k = 1
+pred_knn <- knn(train_knn[1:8],
+                test_knn[1:8],
+                train_knn$stroke,
+                k = 1)
+```
+
+----------------
+
+### <span id="7">7. Logistic Regression</span>
+
+```{r}
+# Logistic Regression 
+model_log <- glm(formula = stroke ~ .,
+                 family = binomial(logit), 
+                 data = train)
+summary(model_log)
+
+# apply the model on test dataset
+pred_log <- predict(model_log,
+                    newdata = test,
+                    type='response')
+
+res_log <- ifelse(pred_log > 0.5, 1, 0)
+```
+
+----------------
+
+### <span id="8">8. Model Evaluation</span>
+
+```{r}
+# Evaluate the performance of models
+
+## 1. SVM model
+## ROC curve
+roc.curve(pred_svm, test$stroke)
+
+## plot Confusion Matrix and evaluation metrics
 confusionMatrix(pred_svm, 
                 factor(test$stroke), 
                 mode = "everything", 
                 positive = "1")
+
+## 2. KNN model
+## ROC curve
+roc.curve(pred_knn, test_knn$stroke)
+
+## plot Confusion Matrix and evaluation metrics
+confusionMatrix(pred_knn, 
+                factor(test_knn$stroke), 
+                mode = "everything", 
+                positive="1")
+
+## 3. Logistic Regression model
+## ROC curve
+roc.curve(res_log, test$stroke)
+
+## plot Confusion Matrix and evaluation metrics
+confusionMatrix(factor(res_log), 
+                factor(test$stroke), 
+                mode = "everything", 
+                positive="1")
 ```
 
 ----------------
 
-#### <span id="6">6. Model 2: Random Forest</span>
+### <span id="9">9. Conclusion</span>
 
-```{r}
-
-```
-
-----------------
-
-#### <span id="7">7. Model Evaluation</span>
-
-```{r}
-
-```
-
-----------------
-
-#### <span id="8">8. Conclusion</span>
-
-```{r}
-
-```
 
