@@ -233,6 +233,9 @@ levels(data$bmi)
 # reorder the levels of bmi
 data$bmi <- factor(data$bmi, levels = c("underweight", "normal", "overweight", "obese"))
 
+# reorder the levels of bmi
+data$smoking_status <- factor(data$smoking_status, levels = c("never smoked", "Unknown", "formerly smoked", "smokes"))
+
 # check the structure
 str(data)
 ```
@@ -258,109 +261,292 @@ corrgram(data_num, order = TRUE,
          lower.panel = panel.shade,
          upper.panel = panel.pie,
          text.panel = panel.txt)
+```
+
+```{r}
+# Age Group Distribution
+ggplot(data, aes(age)) + 
+  geom_bar(aes(fill = age)) +
+  scale_fill_brewer(palette = "Set2") +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Age", y = "Count", title ="Age Group Distribution")
 
 # age & stroke
-ggplot(data, aes(age, fill=stroke)) + 
-  geom_bar(position = "dodge",
-           alpha=0.7)
+ggplot(data, aes(age)) + 
+  geom_bar(aes(fill = stroke)) +
+  scale_fill_brewer(palette = "Set2") +
+  facet_grid(cols = vars(stroke)) +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Age", y = "Count", title ="Age Group Distribution with Class Label")
 
-ggplot(filter(data, stroke == "1"), aes(age)) + 
-  geom_bar(fill="blue", 
-           alpha=0.6)
+# normalize the height
+ggplot(data, aes(age)) + 
+  geom_bar(aes(fill = stroke),
+           position = "fill",
+           alpha=0.8) +
+  labs(x = "Age", y = "Scaled Count", title ="Age Distribution with Normalize Height")
+```
+
+```{r}
+# Gender Distribution
+ggplot(data, aes(gender)) + 
+  geom_bar(aes(fill = gender)) +
+  scale_fill_brewer(palette = "Set2") +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Gender", y = "Count", title ="Gender Distribution")
 
 # gender & stroke
-ggplot(filter(data, stroke == "1"), aes(gender)) + 
-  geom_bar(fill="blue", 
-           alpha=0.6)
+ggplot(data, aes(gender)) + 
+  geom_bar(aes(fill = stroke)) +
+  scale_fill_brewer(palette = "Set2") +
+  facet_grid(cols = vars(stroke)) +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Gender", y = "Count", title ="Gender Distribution with Class Label")
 
-ggplot(data, aes(gender, fill=stroke)) + 
-  geom_bar(alpha=0.7)
+# normalize the height
+ggplot(data, aes(gender)) + 
+  geom_bar(aes(fill = stroke),
+           position = "fill",
+           alpha=0.8) +
+  labs(x = "Gender", y = "Scaled Count", title ="Gender Distribution with Normalize Height")
+```
 
-## normalize the height
-ggplot(data, aes(gender, fill=stroke)) + 
-  geom_bar(position = "fill",
-           alpha=0.7)
+```{r}
+# Hypertension Distribution
+ggplot(data, aes(hypertension)) + 
+  geom_bar(aes(fill = hypertension)) +
+  scale_fill_brewer(palette = "Set2") +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Hypertension", y = "Count", title ="Hypertension Distribution")
 
 # hypertension & stroke
-ggplot(filter(data, hypertension == "1"), aes(stroke)) + 
-  geom_bar(fill="blue", 
-           alpha=0.6)
+ggplot(data, aes(hypertension)) + 
+  geom_bar(aes(fill = stroke)) +
+  scale_fill_brewer(palette = "Set2") +
+  facet_grid(cols = vars(stroke)) +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Hypertension", y = "Count", title ="Hypertension Distribution with Class Label")
 
-ggplot(data, aes(hypertension, fill=stroke)) + 
-  geom_bar(position = "fill",
-           alpha=0.7)
+# normalize the height
+ggplot(data, aes(hypertension)) + 
+  geom_bar(aes(fill = stroke),
+           position = "fill",
+           alpha=0.8) +
+  labs(x = "Hypertension", y = "Scaled Count", title ="Hypertension Distribution with Normalize Height")
+```
+
+```{r}
+# Heart Disease Distribution
+ggplot(data, aes(heart_disease)) + 
+  geom_bar(aes(fill = heart_disease)) +
+  scale_fill_brewer(palette = "Set2") +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Heart Disease", y = "Count", title ="Heart Disease Distribution")
 
 # heart_disease & stroke
-ggplot(filter(data, heart_disease == "1"), aes(stroke)) + 
-  geom_bar(fill="blue", 
-           alpha=0.6)
+ggplot(data, aes(heart_disease)) + 
+  geom_bar(aes(fill = stroke)) +
+  scale_fill_brewer(palette = "Set2") +
+  facet_grid(cols = vars(stroke)) +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Heart Disease", y = "Count", title ="Heart Disease Distribution with Class Label")
 
-ggplot(data, aes(heart_disease, fill=stroke)) + 
-  geom_bar(position = "fill",
-           alpha=0.7)
+# normalize the height
+ggplot(data, aes(heart_disease)) + 
+  geom_bar(aes(fill = stroke),
+           position = "fill",
+           alpha=0.8) +
+  labs(x = "Heart Disease", y = "Scaled Count", title ="Heart Disease Distribution with Normalize Height")
+```
+
+```{r}
+# Marital Status
+ggplot(data, aes(ever_married)) + 
+  geom_bar(aes(fill = ever_married)) +
+  scale_fill_brewer(palette = "Set2") +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Marital Status", y = "Count", title ="Marital Status")
 
 # ever_married & stroke
-ggplot(filter(data, stroke == "1"), aes(ever_married)) + 
-  geom_bar(fill="blue", 
-           alpha=0.6)
+ggplot(data, aes(ever_married)) + 
+  geom_bar(aes(fill = stroke)) +
+  scale_fill_brewer(palette = "Set2") +
+  facet_grid(cols = vars(stroke)) +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Marital Status", y = "Count", title ="Marital Status with Class Label")
 
-ggplot(data, aes(ever_married, fill=stroke)) + 
-  geom_bar(position = "fill",
-           alpha=0.7)
+# normalize the height
+ggplot(data, aes(ever_married)) + 
+  geom_bar(aes(fill = stroke),
+           position = "fill",
+           alpha=0.8) +
+  labs(x = "Marital Status", y = "Scaled Count", title ="Marital Status with Normalize Height")
+```
+
+```{r}
+# Distribution of Work Type
+ggplot(data, aes(work_type)) + 
+  geom_bar(aes(fill = work_type)) +
+  scale_fill_brewer(palette = "Set2") +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Work Type", y = "Count", title ="Distribution of Work Type")
 
 # work_type & stroke
-ggplot(filter(data, stroke == "1"), aes(work_type)) + 
-  geom_bar(fill="blue", 
-           alpha=0.6)
+ggplot(data, aes(work_type)) + 
+  geom_bar(aes(fill = stroke)) +
+  scale_fill_brewer(palette = "Set2") +
+  facet_grid(cols = vars(stroke)) +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Work Type", y = "Count", title ="Distribution of Work Type with Class Label")
 
-ggplot(data, aes(work_type, fill=stroke)) + 
-  geom_bar(position = "fill",
-           alpha=0.7)
+# normalize the height
+ggplot(data, aes(work_type)) + 
+  geom_bar(aes(fill = stroke),
+           position = "fill",
+           alpha=0.8) +
+  labs(x = "Work Type", y = "Scaled Count", title ="Distribution of Work Type with Normalize Height")
+```
+
+```{r}
+# Distribution of Residence Type
+ggplot(data, aes(Residence_type)) + 
+  geom_bar(aes(fill = Residence_type)) +
+  scale_fill_brewer(palette = "Set2") +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Residence Type", y = "Count", title ="Distribution of Residence Type")
 
 # Residence_type & stroke
-ggplot(filter(data, stroke == "1"), aes(Residence_type)) + 
-  geom_bar(fill="blue", 
-           alpha=0.6)
+ggplot(data, aes(Residence_type)) + 
+  geom_bar(aes(fill = stroke)) +
+  scale_fill_brewer(palette = "Set2") +
+  facet_grid(cols = vars(stroke)) +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Residence Type", y = "Count", title ="Distribution of Residence Type with Class Label")
 
-ggplot(data, aes(Residence_type, fill=stroke)) + 
-  geom_bar(position = "fill",
-           alpha=0.7)
+# normalize the height
+ggplot(data, aes(Residence_type)) + 
+  geom_bar(aes(fill = stroke),
+           position = "fill",
+           alpha=0.8) +
+  labs(x = "Residence Type", y = "Scaled Count", title ="Distribution of Residence Type with Normalize Height")
+```
+
+```{r}
+# Group of Average Glucose Level
+ggplot(data, aes(avg_glucose_level)) + 
+  geom_bar(aes(fill = avg_glucose_level)) +
+  scale_fill_brewer(palette = "Set2") +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Average Glucose Level", y = "Count", title ="Group of Average Glucose Level")
 
 # avg_glucose_level & stroke
-ggplot(filter(data, stroke == "1"), aes(avg_glucose_level)) + 
-  geom_bar(fill="blue", 
-           alpha=0.6)
+ggplot(data, aes(avg_glucose_level)) + 
+  geom_bar(aes(fill = stroke)) +
+  scale_fill_brewer(palette = "Set2") +
+  facet_grid(cols = vars(stroke)) +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Average Glucose Level", y = "Count", title ="Distribution of Average Glucose Level Group with Class Label")
 
-ggplot(data, aes(avg_glucose_level, fill=stroke)) + 
-  geom_bar(position = "fill",
-           alpha=0.7)
+# normalize the height
+ggplot(data, aes(avg_glucose_level)) + 
+  geom_bar(aes(fill = stroke),
+           position = "fill",
+           alpha=0.8) +
+  labs(x = "Average Glucose Level", y = "Scaled Count", title ="Group of Average Glucose Level with Normalize Height")
+```
+
+```{r}
+# Distribution of BMI Group
+ggplot(data, aes(bmi)) + 
+  geom_bar(aes(fill = bmi)) +
+  scale_fill_brewer(palette = "Set2") +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "BMI Group", y = "Count", title ="Distribution of BMI Group")
 
 # bmi & stroke
-ggplot(filter(data, stroke == "1"), aes(bmi)) + 
-  geom_bar(fill="blue", 
-           alpha=0.6)
+ggplot(data, aes(bmi)) + 
+  geom_bar(aes(fill = stroke)) +
+  scale_fill_brewer(palette = "Set2") +
+  facet_grid(cols = vars(stroke)) +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "BMI Group", y = "Count", title ="Distribution of BMI Group with Class Label")
 
-ggplot(data, aes(bmi, fill=stroke)) + 
-  geom_bar(position = "fill",
-           alpha=0.7)
+# normalize the height
+ggplot(data, aes(bmi)) + 
+  geom_bar(aes(fill = stroke),
+           position = "fill",
+           alpha=0.8) +
+  labs(x = "BMI Group", y = "Scaled Count", title ="BMI Group with Normalize Height")
+```
+
+```{r}
+# Distribution of Smoking Status
+ggplot(data, aes(smoking_status)) + 
+  geom_bar(aes(fill = smoking_status)) +
+  scale_fill_brewer(palette = "Set2") +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Smoking Status", y = "Count", title ="Distribution of Smoking Status")
 
 # smoking_status & stroke
-ggplot(filter(data, stroke == "1"), aes(smoking_status)) + 
-  geom_bar(fill="blue", 
-           alpha=0.6)
+ggplot(data, aes(smoking_status)) + 
+  geom_bar(aes(fill = stroke)) +
+  scale_fill_brewer(palette = "Set2") +
+  facet_grid(cols = vars(stroke)) +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Smoking Status", y = "Count", title ="Distribution of Smoking Status with Class Label")
 
-ggplot(data, aes(smoking_status, fill=stroke)) + 
-  geom_bar(position = "fill",
-           alpha=0.7)
+# normalize the height
+ggplot(data, aes(smoking_status)) + 
+  geom_bar(aes(fill = stroke),
+           position = "fill",
+           alpha=0.8) +
+  labs(x = "Smoking Status", y = "Scaled Count", title ="Distribution of Smoking Status with Normalize Height")
+```
 
-# stroke, avg_glucose_level, bmi
-ggplot(data, aes(avg_glucose_level, bmi)) +
-  geom_jitter() +
-  facet_wrap(vars(stroke))
+```{r}
+# age, avg_glucose_level
+ggplot(data, aes(age)) +
+  geom_bar(alpha = 0.8, aes(fill = avg_glucose_level)) +
+  facet_grid(rows = vars(avg_glucose_level)) +
+  scale_fill_brewer(palette = "Reds") +
+  geom_text(stat='count', aes(label=..count..)) +
+  labs(x = "Age Group", y = "Count", title ="Distribution of Average Glucose Levels in Different Age Groups")
 
-# heart_disease, avg_glucose_level, bmi
-ggplot(data, aes(avg_glucose_level, fill = heart_disease)) +
-  geom_bar(position = "fill")
+# age, hypertension
+ggplot(data, aes(age)) +
+  geom_bar(alpha = 0.8, aes(fill = hypertension)) +
+  facet_grid(rows = vars(hypertension)) +
+  scale_fill_manual(values = c("skyblue", "royalblue", "blue", "navy")) +
+  geom_text(stat='count', aes(label=..count..)) +
+  labs(x = "Age Group", y = "Count", title ="Hypertension Status in Different Age Groups")
+
+# age, heart_disease
+ggplot(data, aes(age)) +
+  geom_bar(alpha = 0.8, aes(fill = heart_disease)) +
+  facet_grid(rows = vars(heart_disease)) +
+  scale_fill_manual(values = c("skyblue", "royalblue", "blue", "navy")) +
+  geom_text(stat='count', aes(label=..count..)) +
+  labs(x = "Age Group", y = "Count", title ="Heart Disease Status in Different Age Groups")
+
+# age, bmi
+ggplot(data, aes(age)) +
+  geom_bar(alpha = 0.8, aes(fill = bmi)) +
+  facet_grid(rows = vars(bmi)) +
+  scale_fill_brewer(palette = "Reds") +
+  geom_text(stat='count', aes(label=..count..)) +
+  labs(x = "Age Group", y = "Count", title ="BMI Group in Different Age Groups")
+
+# avg_glucose_level, bmi, stroke
+ggplot(data, aes(bmi, avg_glucose_level)) +
+  geom_jitter(alpha = 0.6, aes(color = stroke), size =1) +
+  facet_grid(rows = vars(stroke)) +
+  labs(x = "BMI Group", y = "Group of Average Glucose Level", title ="Distribution of BMI & Average Glucose Level with Class Label")
+
+# hypertension, avg_glucose_level, bmi
+ggplot(data, aes(bmi, avg_glucose_level)) +
+  geom_jitter(alpha = 0.6, aes(color = hypertension), size =1) +
+  facet_grid(rows = vars(hypertension)) +
+  labs(x = "BMI Group", y = "Group of Average Glucose Level", title ="Distribution of BMI & Average Glucose Level with Different Hypertension Status")
 ```
 
 ----------------
@@ -411,17 +597,18 @@ confusionMatrix(pred_svm,
                 positive = "1")
 ```
 
+
 ```{r}
 # Parameter tuning
 # sampling method: 10-fold cross validation
 # It takes a long time, so I comment here
 
-# tune.results <- tune(svm, train.x = stroke ~ .,
-#                      data = train,
-#                      kernel = 'radial',
-#                      ranges = list(cost = c(1,10), 
-#                                    gamma = c(0.1,1)))
-# tune.results
+# tune_res <- tune.svm(x = stroke ~., data = train,
+#                      type = "C-classification",
+#                      kernel = "radial",
+#                      cost = c(1,10),
+#                      gamma = c(0.1,1))
+# tune_res
 
 # set cost = 10, gamma = 1
 model_svm <- svm(stroke ~ ., data = train,
@@ -487,7 +674,7 @@ for (i in 1:10){
 k <- 1:10
 (df <- data.frame(er_knn, k))
 
-ggplot(df,aes(k, er_knn)) + 
+ggplot(df, aes(k, er_knn)) + 
   geom_point() + 
   geom_line(lty="dotted",
             color="blue")
@@ -559,5 +746,4 @@ confusionMatrix(factor(res_log),
 ----------------
 
 ### <span id="9">9. Conclusion</span>
-
 
