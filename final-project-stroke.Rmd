@@ -5,6 +5,11 @@ date: "2022-11-16"
 output: html_document
 ---
 
+Github repository:
+https://github.com/yanyan-dong/INFO523-final-project.git
+
+-------------------
+
 - [1. Introduction](#1)
 - [2. Preparation](#2)
 - [3. Data Cleaning](#3)
@@ -612,6 +617,8 @@ test <- subset(data_os, split == FALSE)
 ```
 
 ```{r W/O oversampling}
+# W/O oversampling
+
 # Train and Test Split
 set.seed(101)
 
@@ -815,8 +822,10 @@ confusionMatrix(factor(res_log),
 ----------------
 
 ### <span id="9">9. Conclusion</span>
-SVM model had highest accuracy and would be able to, based on this dataset, accurately predict someone’s likelihood of having a stroke up to 92%. 
+We implemented three models, including Support Vector Machine (SVM) model, K-nearest neighbors(KNN) model and linear regression model. Among them, the SVM model has the best performance (F1 score of 92%), and would be able to, based on this dataset, accurately predict someone’s likelihood of having a stroke up to 91%. The performance of the KNN model is just slightly worse than the SVM model (F1 scores of 90%). As well as the logistic regression model, although it performs worse than the first two models (F1 scores of 78%), it shows us several statistically significant predictors.
 
-There are many instances where data science and machine learning can be used in practical, everyday situations. This example was particularly interesting to us as a way to model how these tools and methods may be applied to actual, life-impacting (or even life-saving) scenarios. 
+From this data mining project, we learned that it is crucial to know our data, and the importance of data pre-processing. For example, in order to improve the performance of the models, binning the numeric variables and solving the class imbalance problem with random over-sampling are very significant.
+
+There are many instances where data science and machine learning can be used in practical, everyday situations. This example was particularly interesting to us as a way to model how these tools and methods may be applied to actual, life-impacting (or even life-saving) scenarios.
 
 With that said, there are also many examples of ways that these algorithms and formulas get the story wrong, where maybe certain input variables come to have unequal impact in services or resource distribution. So while it could definitely be one important factor that is considered in, for example, medical treatment, it is also essential that these models are not taken lightly and that it isn’t forgotten that they could represent real people and lives. 
