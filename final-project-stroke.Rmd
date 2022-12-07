@@ -26,7 +26,7 @@ Using the “healthcare-dataset-stroke-data” from Kaggle, we are curious to se
 
 #### Dataset and Data Mining Task
 
-The data we are using for this project is from Kaggle and contains 5,100 observations with twelve attributes: id, gender, age, if hypertension is present or not, if heart disease is present or not, if they have ever been married, what type of work they do, where they reside (rural or urban), their average glucose level, BMI, their smoking status and whether or not they had a stroke. Each row of data corresponds to one patient:
+The data we are using for this project is from Kaggle and contains 5,100 observations with twelve attributes: id, gender, age, if hypertension is present or not, if heart disease is present or not, if they have ever been married, what type of work they do, where they reside (rural or urban), their average glucose level, BMI, their smoking status and whether or not they had a stroke. Each row of data corresponds to one patient.
 
 #### Attribute Information
 
@@ -62,12 +62,20 @@ https://www.kaggle.com/datasets/fedesoriano/stroke-prediction-dataset
 ### <span id="2">2. Preparation</span>
 
 ```{r package, message=FALSE, warning=FALSE}
-# data
-library(dplyr)
-library(ggplot2)
-library(Amelia)
-library(corrplot)
-library(corrgram)
+# # install packages
+# install.packages("dplyr")
+# install.packages("ggplot2")
+# install.packages("Amelia")
+# install.packages("corrplot")
+# install.packages("corrgram")
+# install.packages("caTools")
+# install.packages("e1071")
+# install.packages("ROSE")
+# install.packages("Metrics")
+# install.packages("class")
+# install.packages("tidymodels")
+# install.packages("glmnet")
+# install.packages("caret")
 
 # model
 library(caTools)
@@ -78,9 +86,16 @@ library(Metrics)
 library(class)
 library(tidymodels)
 library(glmnet)
+
+# data
+library(dplyr)
+library(ggplot2)
+library(Amelia)
+library(corrplot)
+library(corrgram)
 ```
 
-```{r}
+```{r data}
 # read the data
 data <- read.csv("healthcare-dataset-stroke-data.csv")
 
@@ -94,13 +109,13 @@ summary(data)
 
 ### <span id="3">3. Data Cleaning</span>
 
-```{r}
+```{r NA values}
 # check NA values
 any(is.na(data)) # it shows there are no missing value
 
 # however there are N/A in bmi, convert them to NA values
 data[data == 'N/A'] <- NA
-missmap(data, col=c("yellow", "black"), legend=FALSE) # there are missing values on bmi
+missmap(data, col=c("yellow", "black"), legend=FALSE, margins = c(7, 4)) # there are missing values on bmi
 table(is.na(data)) # there are 201 missing values
 
 # convert bmi data type to numeric
@@ -119,7 +134,7 @@ data <- data[-1]
 head(data)
 ```
 
-```{r}
+```{r data transformation}
 # data transformation
 str(data)
 
@@ -143,7 +158,7 @@ ggplot(data, aes(age,y=..density..)) +
 boxplot(data$age)
 summary(data$age)
 
-# binning age with quantile: 25, 44, 60, 82
+# binning age by quantile: 25, 44, 60, 82
 data$age <- cut(data$age,
                 breaks = c(0, 25, 44, 60, 82), 
                 labels=c('young', 'grown', 'mature', 'old'))
@@ -244,7 +259,7 @@ str(data)
 
 ### <span id="4">4. Exploratory Data Analysis</span>
 
-```{r}
+```{r correlation}
 # check the correlation
 # convert factor variables to numeric variables
 data_num <- data %>% mutate(across(where(is.factor),as.numeric))
@@ -261,6 +276,15 @@ corrgram(data_num, order = TRUE,
          lower.panel = panel.shade,
          upper.panel = panel.pie,
          text.panel = panel.txt)
+```
+
+```{r}
+# class label: stroke
+ggplot(data, aes(stroke)) + 
+  geom_bar(aes(fill = stroke)) +
+  scale_fill_brewer(palette = "Set2") +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+  labs(x = "Stroke Status", y = "Count", title ="Stroke Status Distribution")
 ```
 
 ```{r}
@@ -553,7 +577,7 @@ ggplot(data, aes(bmi, avg_glucose_level)) +
 
 ### <span id="5">5. Model 1: Support Vector Machine</span>
 
-```{r}
+```{r over sampling}
 # drop uncorrelated attributes: gender, Residence_type
 data_drop <- select(data, -gender, -Residence_type)
 
@@ -569,6 +593,13 @@ str(data_os)
 summary(data_os)
 table(data_os$data$stroke)
 
+# # plot
+# ggplot(data_os, aes(stroke)) +
+#   geom_bar(aes(fill = stroke)) +
+#   scale_fill_brewer(palette = "Set2") +
+#   geom_text(stat='count', aes(label=..count..), vjust=-0.3) +
+#   labs(x = "Stroke Status", y = "Count", title ="Stroke Status Distribution after Over Sampling")
+
 # move class label (stroke) back to last row
 data_os <- data_os$data[c(9:1)]
 
@@ -580,7 +611,31 @@ train <- subset(data_os, split == TRUE)
 test <- subset(data_os, split == FALSE)
 ```
 
-```{r}
+```{r W/O oversampling}
+# Train and Test Split
+set.seed(101)
+
+split_wo_os <- sample.split(data_drop$stroke, SplitRatio = 0.7)
+train_wo_os <- subset(data_drop, split_wo_os == TRUE)
+test_wo_os <- subset(data_drop, split_wo_os == FALSE)
+
+# build model (SVM)
+svm_wo_os <- svm(stroke ~ ., data = train_wo_os,
+                 kernel = 'radial',
+                 cost = 10,
+                 gamma = 1)
+
+# use the model on test data to predict our label (stroke)
+pred_wo_os <- predict(svm_wo_os, test_wo_os[1:8])
+
+# check the model performance
+confusionMatrix(pred_wo_os, 
+                factor(test_wo_os$stroke), 
+                mode = "everything", 
+                positive = "1")
+```
+
+```{r SVM}
 # SVM
 model_svm <- svm(stroke ~ ., data = train)
 
@@ -597,18 +652,22 @@ confusionMatrix(pred_svm,
                 positive = "1")
 ```
 
-
 ```{r}
-# Parameter tuning
+# Parameter Tuning
 # sampling method: 10-fold cross validation
-# It takes a long time, so I comment here
+# it takes a long time
 
-# tune_res <- tune.svm(x = stroke ~., data = train,
-#                      type = "C-classification",
-#                      kernel = "radial",
-#                      cost = c(1,10),
-#                      gamma = c(0.1,1))
-# tune_res
+tune_res <- tune.svm(x = stroke ~., data = train,
+                     type = "C-classification",
+                     kernel = "radial",
+                     cost = c(1,10),
+                     gamma = c(0.1,1))
+tune_res
+
+# Visualizes the results of parameter tuning
+plot(tune_res,
+     type = c("contour", "perspective"),
+     col = "blue")
 
 # set cost = 10, gamma = 1
 model_svm <- svm(stroke ~ ., data = train,
@@ -624,7 +683,7 @@ pred_svm <- predict(model_svm,test[1:8])
 
 ### <span id="6">6. Model 2: K-nearest Neighbors</span>
 
-```{r}
+```{r KNN}
 # KNN
 # convert data type from factor to numeric
 data_os_num <- data_os %>% mutate(across(where(is.factor),as.numeric))
@@ -660,7 +719,7 @@ er_knn
 ```
 
 ```{r}
-# Parameter tuning
+# Parameter Tuning
 for (i in 1:10){
   set.seed(101)
   pred_knn <- knn(train_knn[1:8],
@@ -670,14 +729,24 @@ for (i in 1:10){
   er_knn[i] <- mean(test_knn$stroke != pred_knn)
 }
 
-# elbow method
+# elbow method in KNN algorithm
 k <- 1:10
 (df <- data.frame(er_knn, k))
 
 ggplot(df, aes(k, er_knn)) + 
   geom_point() + 
   geom_line(lty="dotted",
-            color="blue")
+            color="blue") +
+  labs(x = "K Values", y = "Error Rate", title = "Error Rate vs. K Values")
+
+# 10-fold cross-validation
+knn_cv <- tune.knn(x = train_knn[1:8], 
+                   y = train_knn[,9], 
+                   k = 1:10, 
+                   tunecontrol = tune.control(sampling = "cross"), 
+                   cross=10)
+summary(knn_cv)
+plot(knn_cv)
 
 # set k = 1
 pred_knn <- knn(train_knn[1:8],
@@ -714,7 +783,7 @@ res_log <- ifelse(pred_log > 0.5, 1, 0)
 
 ## 1. SVM model
 ## ROC curve
-roc.curve(pred_svm, test$stroke)
+roc.curve(pred_svm, test$stroke, main="ROC curve (SVM)")
 
 ## plot Confusion Matrix and evaluation metrics
 confusionMatrix(pred_svm, 
@@ -724,7 +793,7 @@ confusionMatrix(pred_svm,
 
 ## 2. KNN model
 ## ROC curve
-roc.curve(pred_knn, test_knn$stroke)
+roc.curve(pred_knn, test_knn$stroke, main="ROC curve (KNN)")
 
 ## plot Confusion Matrix and evaluation metrics
 confusionMatrix(pred_knn, 
@@ -734,7 +803,7 @@ confusionMatrix(pred_knn,
 
 ## 3. Logistic Regression model
 ## ROC curve
-roc.curve(res_log, test$stroke)
+roc.curve(res_log, test$stroke, main="ROC curve (Logistic Regression)")
 
 ## plot Confusion Matrix and evaluation metrics
 confusionMatrix(factor(res_log), 
@@ -746,4 +815,8 @@ confusionMatrix(factor(res_log),
 ----------------
 
 ### <span id="9">9. Conclusion</span>
+SVM model had highest accuracy and would be able to, based on this dataset, accurately predict someone’s likelihood of having a stroke up to 92%. 
 
+There are many instances where data science and machine learning can be used in practical, everyday situations. This example was particularly interesting to us as a way to model how these tools and methods may be applied to actual, life-impacting (or even life-saving) scenarios. 
+
+With that said, there are also many examples of ways that these algorithms and formulas get the story wrong, where maybe certain input variables come to have unequal impact in services or resource distribution. So while it could definitely be one important factor that is considered in, for example, medical treatment, it is also essential that these models are not taken lightly and that it isn’t forgotten that they could represent real people and lives. 
